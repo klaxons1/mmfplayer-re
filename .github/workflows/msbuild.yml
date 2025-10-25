@@ -26,10 +26,20 @@ jobs:
 
       - name: Build JNI DLL
         shell: msys2 {0}
-        env:
-          JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
         run: |
-          i686-w64-mingw32-gcc -m32 -shared -o mmfplayer_native.dll mmfplayer_native_jni.c -I"$JAVA_HOME/include" -I"$JAVA_HOME/include/win32" -Wl,--add-stdcall-alias
+          # Convert Windows path to MSYS2 path
+          JAVA_HOME_WIN=$(echo "$JAVA_HOME" | sed 's/\\/\//g' | sed 's/C:/\/c/')
+          echo "Java Home (Windows): $JAVA_HOME"
+          echo "Java Home (MSYS2): $JAVA_HOME_WIN"
+          
+          # Verify include directories exist
+          ls -la "$JAVA_HOME_WIN/include/"
+          ls -la "$JAVA_HOME_WIN/include/win32/"
+          
+          i686-w64-mingw32-gcc -m32 -shared -o mmfplayer_native.dll mmfplayer_native_jni.c \
+            -I"$JAVA_HOME_WIN/include" \
+            -I"$JAVA_HOME_WIN/include/win32" \
+            -Wl,--add-stdcall-alias
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

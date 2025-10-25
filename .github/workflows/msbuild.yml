@@ -18,21 +18,18 @@ jobs:
           java-version: '8'
 
       - name: Setup MSYS2 MinGW
-        uses: msys2/setup-msys2@v1
+        uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW32
           update: true
-
-      - name: Install MinGW Toolchain
-        run: pacman -S --noconfirm mingw-w64-i686-toolchain
-        shell: bash
+          install: mingw-w64-i686-toolchain
 
       - name: Build JNI DLL
-        shell: bash
+        shell: msys2 {0}
         env:
           JAVA_HOME: ${{ steps.setup-java.outputs.java-home }}
         run: |
-          i686-w64-mingw32-gcc -m32 -shared -o mmfplayer_native.dll mmfplayer_native_jni.c -I\"$JAVA_HOME/include\" -I\"$JAVA_HOME/include/win32\" -Wl,--add-stdcall-alias
+          i686-w64-mingw32-gcc -m32 -shared -o mmfplayer_native.dll mmfplayer_native_jni.c -I"$JAVA_HOME/include" -I"$JAVA_HOME/include/win32" -Wl,--add-stdcall-alias
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

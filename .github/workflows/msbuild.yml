@@ -8,6 +8,10 @@ on:
 jobs:
   build-win32:
     runs-on: windows-latest
+    strategy:
+      matrix:
+        compiler: [msvc, mingw]
+    
     steps:
       - uses: actions/checkout@v4
 
@@ -17,32 +21,93 @@ jobs:
           distribution: 'temurin'
           java-version: '8'
 
-      - name: Setup MSYS2 MinGW
+      - name: Setup MSYS2 MinGW (for mingw build)
+        if: matrix.compiler == 'mingw'
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW32
           update: true
           install: mingw-w64-i686-toolchain
 
-      - name: Build JNI DLL
+      - name: Build with MSVC
+        if: matrix.compiler == 'msvc'
+        run: |
+          echo "Building with MSVC..."
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars32.bat"
+          
+          cl /LD /nologo ^
+             /I"%JAVA_HOME%\include" ^
+             /I"%JAVA_HOME%\include\win32" ^
+             mmfplayer_native_jni.c ^
+             /Femmfplayer_native_msvc.dll ^
+             /link /DLL /NOLOGO /OUT:mmfplayer_native_msvc.dll
+          
+          if %errorlevel% neq 0 (
+            echo "MSVC compilation failed"
+            exit 1
+          )
+          echo "MSVC build successful"
+
+      - name: Build with MinGW
+        if: matrix.compiler == 'mingw'
         shell: msys2 {0}
         run: |
+          echo "Building with MinGW..."
           # Convert Windows path to MSYS2 path
           JAVA_HOME_WIN=$(echo "$JAVA_HOME" | sed 's/\\/\//g' | sed 's/C:/\/c/')
-          echo "Java Home (Windows): $JAVA_HOME"
-          echo "Java Home (MSYS2): $JAVA_HOME_WIN"
+          echo "Java Home: $JAVA_HOME_WIN"
           
-          # Verify include directories exist
+          # Verify include directories
           ls -la "$JAVA_HOME_WIN/include/"
           ls -la "$JAVA_HOME_WIN/include/win32/"
           
-          i686-w64-mingw32-gcc -m32 -shared -o mmfplayer_native.dll mmfplayer_native_jni.c \
+          i686-w64-mingw32-gcc -m32 -shared -o mmfplayer_native_mingw.dll mmfplayer_native_jni.c \
             -I"$JAVA_HOME_WIN/include" \
             -I"$JAVA_HOME_WIN/include/win32" \
-            -Wl,--add-stdcall-alias
+            -Wl,--add-stdcall-alias -static-libgcc -static-libstdc++
+          
+          if [ $? -eq 0 ]; then
+            echo "MinGW build successful"
+          else
+            echo "MinGW compilation failed"
+            exit 1
+          fi
 
-      - name: Upload Artifact
+      - name: List built artifacts
+        run: |
+          echo "Built files:"
+          dir *.dll
+
+      - name: Upload MSVC Artifact
+        if: matrix.compiler == 'msvc'
         uses: actions/upload-artifact@v4
         with:
-          name: mmfplayer_native-dll
-          path: mmfplayer_native.dll
+          name: mmfplayer-native-msvc
+          path: mmfplayer_native_msvc.dll
+
+      - name: Upload MinGW Artifact
+        if: matrix.compiler == 'mingw'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mmfplayer-native-mingw
+          path: mmfplayer_native_mingw.dll
+
+  combine-artifacts:
+    runs-on: windows-latest
+    needs: build-win32
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          
+      - name: List downloaded artifacts
+        run: |
+          echo "Downloaded artifacts:"
+          dir artifacts /s
+          
+      - name: Create combined release
+        uses: actions/upload-artifact@v4
+        with:
+          name: mmfplayer-native-all
+          path: artifacts/

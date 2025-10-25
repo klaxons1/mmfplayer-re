@@ -31,6 +31,7 @@ jobs:
 
       - name: Build with MSVC
         if: matrix.compiler == 'msvc'
+        shell: cmd
         run: |
           echo "Building with MSVC..."
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars32.bat"
@@ -44,7 +45,7 @@ jobs:
           
           if %errorlevel% neq 0 (
             echo "MSVC compilation failed"
-            exit 1
+            exit /b 1
           )
           echo "MSVC build successful"
 

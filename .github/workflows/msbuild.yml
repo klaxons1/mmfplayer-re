@@ -58,10 +58,6 @@ jobs:
           JAVA_HOME_WIN=$(echo "$JAVA_HOME" | sed 's/\\/\//g' | sed 's/C:/\/c/')
           echo "Java Home: $JAVA_HOME_WIN"
           
-          # Verify include directories
-          ls -la "$JAVA_HOME_WIN/include/"
-          ls -la "$JAVA_HOME_WIN/include/win32/"
-          
           i686-w64-mingw32-gcc -m32 -shared -o mmfplayer_native_mingw.dll mmfplayer_native_jni.c \
             -I"$JAVA_HOME_WIN/include" \
             -I"$JAVA_HOME_WIN/include/win32" \
@@ -74,17 +70,13 @@ jobs:
             exit 1
           fi
 
-      - name: List built artifacts
-        run: |
-          echo "Built files:"
-          dir *.dll
-
       - name: Upload MSVC Artifact
         if: matrix.compiler == 'msvc'
         uses: actions/upload-artifact@v4
         with:
           name: mmfplayer-native-msvc
           path: mmfplayer_native_msvc.dll
+          retention-days: 30
 
       - name: Upload MinGW Artifact
         if: matrix.compiler == 'mingw'
@@ -92,23 +84,4 @@ jobs:
         with:
           name: mmfplayer-native-mingw
           path: mmfplayer_native_mingw.dll
-
-  combine-artifacts:
-    runs-on: windows-latest
-    needs: build-win32
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          
-      - name: List downloaded artifacts
-        run: |
-          echo "Downloaded artifacts:"
-          dir artifacts /s
-          
-      - name: Create combined release
-        uses: actions/upload-artifact@v4
-        with:
-          name: mmfplayer-native-all
-          path: artifacts/
+          retention-days: 30

@@ -78,10 +78,10 @@ JNIEXPORT jint JNICALL Java_emulator_media_MMFPlayer_initMMFLibrary(JNIEnv *env,
     if (!load_exports()) return -3;
 	
 	if (EmuBuf) {
-		hfree(EmuBuf);
+		free(EmuBuf);
 	}
 	
-	EmuBuf = halloc(1024);
+	EmuBuf = malloc(1024);
 	EmuP = EmuBuf;
 	while(((DWORD)EmuP & 0xFF) != 0x81) EmuP++;
     

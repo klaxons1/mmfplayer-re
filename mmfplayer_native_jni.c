@@ -96,6 +96,18 @@ JNIEXPORT jint JNICALL Java_emulator_media_MMFPlayer_initMMFLibrary(JNIEnv *env,
 		if(MaSound_DeviceControl(0x0D, 0, 0, 0)) {
 			return -7;
 		}
+		if(MaSound_DeviceControl(0x05, 2, 0, 0)) {
+			return 0;
+		}
+		if(MaSound_DeviceControl(0x06, 0, 0, 0)) {
+			return 0;
+		}
+		if(MaSound_DeviceControl(0x08, 2, 0, 0)) {
+			return 0;
+		}
+		if(MaSound_DeviceControl(0x09, 0, 0, 0)) {
+			return 0;
+		}
 		result = 1;
     }
     

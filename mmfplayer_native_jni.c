@@ -123,7 +123,7 @@ JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_initPlayer(JNIEnv *env, jcl
     
     // Получаем ID из byte array (4 байта)
     jint len = (*env)->GetArrayLength(arr);
-    jbyte* data = (*env)->GetByteArrayElements(arr, NULL)
+    jbyte* data = (*env)->GetByteArrayElements(arr, NULL);
     
     // Закрываем предыдущий звук если был
     if (g_currentSound != -1) {

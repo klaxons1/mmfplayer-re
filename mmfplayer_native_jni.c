@@ -28,6 +28,8 @@ static int (*MaSound_Standby)(int, int, int);
 static int (*MaSound_Start)(int, int, int, int);
 static int (*MaSound_GetEmuInfo)(int);
 static int (*MaSound_Stop)(int, int, int);
+static int (*MaSound_Pause)(int, int, int);
+static int (*MaSound_Restart)(int, int, int);
 static int (*MaSound_Seek)(int, int, int, int, int);
 static int (*MaSound_Close)(int, int, int);
 static int (*MaSound_Unload)(int, int, int);
@@ -49,6 +51,8 @@ static int load_exports() {
 	if(!((FARPROC)MaSound_Start			= GetProcAddress(g_hMaSound, "MaSound_Start")))			return FALSE;
 	if(!((FARPROC)MaSound_GetEmuInfo	= GetProcAddress(g_hMaSound, "MaSound_GetEmuInfo")))		return FALSE;
 	if(!((FARPROC)MaSound_Stop			= GetProcAddress(g_hMaSound, "MaSound_Stop")))			return FALSE;
+	if(!((FARPROC)MaSound_Pause			= GetProcAddress(g_hMaSound, "MaSound_Pause")))			return FALSE;
+	if(!((FARPROC)MaSound_Restart			= GetProcAddress(g_hMaSound, "MaSound_Restart")))			return FALSE;
 	if(!((FARPROC)MaSound_Seek			= GetProcAddress(g_hMaSound, "MaSound_Seek")))			return FALSE;
 	if(!((FARPROC)MaSound_Close			= GetProcAddress(g_hMaSound, "MaSound_Close")))			return FALSE;
 	if(!((FARPROC)MaSound_Unload		= GetProcAddress(g_hMaSound, "MaSound_Unload")))			return FALSE;
@@ -132,7 +136,7 @@ JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_play(JNIEnv *env, jclass cl
     if (g_currentSound == -1) return;
     
     // Устанавливаем громкость (0-255 -> 0-100 scale)
-    unsigned char volume = (unsigned char)((vol & 0xFF) * 100 / 255);
+    int volume = (int)((vol & 0xFF) * 100 / 255);
     if (MaSound_Control) MaSound_Control(g_instanceId, g_currentSound, 0, &volume, 0);
     
     // Воспроизводим

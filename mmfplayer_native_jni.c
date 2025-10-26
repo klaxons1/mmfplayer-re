@@ -10,55 +10,53 @@
 #define EXPORT __declspec(dllexport)
 
 static HMODULE g_hMaSound = NULL;
+static BYTE* EmuBuf;
+static BYTE* EmuP;
 static int g_instanceId = 1;
 static int g_currentSound = -1;
 static int g_isPlaying = 0;
 
-// Объявления функций из ma3smwemu.dll
-typedef int (__cdecl *fn_MS_INIT)(void);
-typedef int (__cdecl *fn_MS_CREATE)(int);
-typedef int (__cdecl *fn_MS_LOAD)(int, int, int, int, int, int);
-typedef int (__cdecl *fn_MS_OPEN)(int, int, int, int);
-typedef int (__cdecl *fn_MS_STANDBY)(int, int, int);
-typedef int (__cdecl *fn_MS_START)(int, int, int, int);
-typedef int (__cdecl *fn_MS_STOP)(int, int, int);
-typedef int (__cdecl *fn_MS_PAUSE)(int, int, int);
-typedef int (__cdecl *fn_MS_RESTART)(int, int, int);
-typedef int (__cdecl *fn_MS_CLOSE)(int, int, int);
-typedef int (__cdecl *fn_MS_UNLOAD)(int, int, int);
-typedef int (__cdecl *fn_MS_DELETE)(int);
-typedef int (__cdecl *fn_MS_CONTROL)(int, int, int, void*, int);
-
-static fn_MS_INIT MaSound_Initialize = NULL;
-static fn_MS_CREATE MaSound_Create = NULL;
-static fn_MS_LOAD MaSound_Load = NULL;
-static fn_MS_OPEN MaSound_Open = NULL;
-static fn_MS_STANDBY MaSound_Standby = NULL;
-static fn_MS_START MaSound_Start = NULL;
-static fn_MS_STOP MaSound_Stop = NULL;
-static fn_MS_PAUSE MaSound_Pause = NULL;
-static fn_MS_RESTART MaSound_Restart = NULL;
-static fn_MS_CLOSE MaSound_Close = NULL;
-static fn_MS_UNLOAD MaSound_Unload = NULL;
-static fn_MS_DELETE MaSound_Delete = NULL;
-static fn_MS_CONTROL MaSound_Control = NULL;
+static int (*MaSound_EmuInitialize)(DWORD, DWORD, BYTE*);
+static int (*MaSound_Initialize)(int, BYTE*, int);
+static int (*MaSound_DeviceControl)(int, int, int, int);
+static int (*MaSound_Terminate)();
+static int (*MaSound_Create)(int);
+static int (*MaSound_Load)(int, BYTE*, DWORD, int, int, int);
+static int (*MaSound_Control)(int, int, int, int*, int);
+static int (*MaSound_Open)(int, int, int, int);
+static int (*MaSound_Standby)(int, int, int);
+static int (*MaSound_Start)(int, int, int, int);
+static int (*MaSound_GetEmuInfo)(int);
+static int (*MaSound_Stop)(int, int, int);
+static int (*MaSound_Seek)(int, int, int, int, int);
+static int (*MaSound_Close)(int, int, int);
+static int (*MaSound_Unload)(int, int, int);
+static int (*MaSound_Delete)(int);
+static int (*MaSound_Terminate)();
+static int (*MaSound_EmuTerminate)();
+static int (*SetMidiMsg)(BYTE*, DWORD);
 
 static int load_exports() {
-    if (!g_hMaSound) return 0;
-    
-    MaSound_Initialize = (fn_MS_INIT)GetProcAddress(g_hMaSound, "MaSound_Initialize");
-    MaSound_Create = (fn_MS_CREATE)GetProcAddress(g_hMaSound, "MaSound_Create");
-    MaSound_Load = (fn_MS_LOAD)GetProcAddress(g_hMaSound, "MaSound_Load");
-    MaSound_Open = (fn_MS_OPEN)GetProcAddress(g_hMaSound, "MaSound_Open");
-    MaSound_Standby = (fn_MS_STANDBY)GetProcAddress(g_hMaSound, "MaSound_Standby");
-    MaSound_Start = (fn_MS_START)GetProcAddress(g_hMaSound, "MaSound_Start");
-    MaSound_Stop = (fn_MS_STOP)GetProcAddress(g_hMaSound, "MaSound_Stop");
-    MaSound_Pause = (fn_MS_PAUSE)GetProcAddress(g_hMaSound, "MaSound_Pause");
-    MaSound_Restart = (fn_MS_RESTART)GetProcAddress(g_hMaSound, "MaSound_Restart");
-    MaSound_Close = (fn_MS_CLOSE)GetProcAddress(g_hMaSound, "MaSound_Close");
-    MaSound_Unload = (fn_MS_UNLOAD)GetProcAddress(g_hMaSound, "MaSound_Unload");
-    MaSound_Delete = (fn_MS_DELETE)GetProcAddress(g_hMaSound, "MaSound_Delete");
-    MaSound_Control = (fn_MS_CONTROL)GetProcAddress(g_hMaSound, "MaSound_Control");
+	if(!((FARPROC)MaSound_EmuInitialize	= GetProcAddress(hdll, "MaSound_EmuInitialize")))	return FALSE;
+	if(!((FARPROC)MaSound_Initialize	= GetProcAddress(hdll, "MaSound_Initialize")))		return FALSE;
+	if(!((FARPROC)MaSound_DeviceControl	= GetProcAddress(hdll, "MaSound_DeviceControl")))	return FALSE;
+	if(!((FARPROC)MaSound_Terminate		= GetProcAddress(hdll, "MaSound_Terminate")))		return FALSE;
+	if(!((FARPROC)MaSound_Create		= GetProcAddress(hdll, "MaSound_Create")))			return FALSE;
+	if(!((FARPROC)MaSound_Load			= GetProcAddress(hdll, "MaSound_Load")))			return FALSE;
+	if(!((FARPROC)MaSound_Control		= GetProcAddress(hdll, "MaSound_Control")))			return FALSE;
+	if(!((FARPROC)MaSound_Open			= GetProcAddress(hdll, "MaSound_Open")))			return FALSE;
+	if(!((FARPROC)MaSound_Standby		= GetProcAddress(hdll, "MaSound_Standby")))			return FALSE;
+	if(!((FARPROC)MaSound_Start			= GetProcAddress(hdll, "MaSound_Start")))			return FALSE;
+	if(!((FARPROC)MaSound_GetEmuInfo	= GetProcAddress(hdll, "MaSound_GetEmuInfo")))		return FALSE;
+	if(!((FARPROC)MaSound_Stop			= GetProcAddress(hdll, "MaSound_Stop")))			return FALSE;
+	if(!((FARPROC)MaSound_Seek			= GetProcAddress(hdll, "MaSound_Seek")))			return FALSE;
+	if(!((FARPROC)MaSound_Close			= GetProcAddress(hdll, "MaSound_Close")))			return FALSE;
+	if(!((FARPROC)MaSound_Unload		= GetProcAddress(hdll, "MaSound_Unload")))			return FALSE;
+	if(!((FARPROC)MaSound_Delete		= GetProcAddress(hdll, "MaSound_Delete")))			return FALSE;
+	if(!((FARPROC)MaSound_Terminate		= GetProcAddress(hdll, "MaSound_Terminate")))		return FALSE;
+	if(!((FARPROC)MaSound_EmuTerminate	= GetProcAddress(hdll, "MaSound_EmuTerminate")))	return FALSE;
+	if(!((FARPROC)SetMidiMsg			= GetProcAddress(hdll, "SetMidiMsg")))				return FALSE;
+
     
     return 1;
 }
@@ -71,21 +69,37 @@ JNIEXPORT jint JNICALL Java_emulator_media_MMFPlayer_initMMFLibrary(JNIEnv *env,
     g_hMaSound = LoadLibraryA(path);
     (*env)->ReleaseStringUTFChars(env, jpath, path);
     
-    if (!g_hMaSound) return -1;
+    if (!g_hMaSound) return -2;
     
-    if (!load_exports()) return -1;
+    if (!load_exports()) return -3;
+	
+	if (EmuBuf) {
+		hfree(EmuBuf);
+	}
+	
+	EmuBuf = halloc(1024);
+	EmuP = EmuBuf;
+	while(((DWORD)EmuP & 0xFF) != 0x81) EmuP++;
     
-    // Инициализация как в оригинале
-    int result = -1;
+    int result = 0;
     if (MaSound_Initialize) {
-        result = MaSound_Initialize();
+		if(MaSound_EmuInitialize(48000, 2, EmuP)) {
+			return -5;
+		}
+		if(MaSound_Initialize(0, EmuBuf, 0))	{
+			return -6;
+		}
+		if(MaSound_DeviceControl(0x0D, 0, 0, 0)) {
+			return -7;
+		}
+		result = 1;
     }
     
     if (MaSound_Create) {
         result = MaSound_Create(g_instanceId);
     }
     
-    return (result >= 0) ? 1 : -1;
+    return result;
 }
 
 JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_initPlayer(JNIEnv *env, jclass cls, jbyteArray arr) {

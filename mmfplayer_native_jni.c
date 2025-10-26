@@ -37,25 +37,25 @@ static int (*MaSound_EmuTerminate)();
 static int (*SetMidiMsg)(BYTE*, DWORD);
 
 static int load_exports() {
-	if(!((FARPROC)MaSound_EmuInitialize	= GetProcAddress(hdll, "MaSound_EmuInitialize")))	return FALSE;
-	if(!((FARPROC)MaSound_Initialize	= GetProcAddress(hdll, "MaSound_Initialize")))		return FALSE;
-	if(!((FARPROC)MaSound_DeviceControl	= GetProcAddress(hdll, "MaSound_DeviceControl")))	return FALSE;
-	if(!((FARPROC)MaSound_Terminate		= GetProcAddress(hdll, "MaSound_Terminate")))		return FALSE;
-	if(!((FARPROC)MaSound_Create		= GetProcAddress(hdll, "MaSound_Create")))			return FALSE;
-	if(!((FARPROC)MaSound_Load			= GetProcAddress(hdll, "MaSound_Load")))			return FALSE;
-	if(!((FARPROC)MaSound_Control		= GetProcAddress(hdll, "MaSound_Control")))			return FALSE;
-	if(!((FARPROC)MaSound_Open			= GetProcAddress(hdll, "MaSound_Open")))			return FALSE;
-	if(!((FARPROC)MaSound_Standby		= GetProcAddress(hdll, "MaSound_Standby")))			return FALSE;
-	if(!((FARPROC)MaSound_Start			= GetProcAddress(hdll, "MaSound_Start")))			return FALSE;
-	if(!((FARPROC)MaSound_GetEmuInfo	= GetProcAddress(hdll, "MaSound_GetEmuInfo")))		return FALSE;
-	if(!((FARPROC)MaSound_Stop			= GetProcAddress(hdll, "MaSound_Stop")))			return FALSE;
-	if(!((FARPROC)MaSound_Seek			= GetProcAddress(hdll, "MaSound_Seek")))			return FALSE;
-	if(!((FARPROC)MaSound_Close			= GetProcAddress(hdll, "MaSound_Close")))			return FALSE;
-	if(!((FARPROC)MaSound_Unload		= GetProcAddress(hdll, "MaSound_Unload")))			return FALSE;
-	if(!((FARPROC)MaSound_Delete		= GetProcAddress(hdll, "MaSound_Delete")))			return FALSE;
-	if(!((FARPROC)MaSound_Terminate		= GetProcAddress(hdll, "MaSound_Terminate")))		return FALSE;
-	if(!((FARPROC)MaSound_EmuTerminate	= GetProcAddress(hdll, "MaSound_EmuTerminate")))	return FALSE;
-	if(!((FARPROC)SetMidiMsg			= GetProcAddress(hdll, "SetMidiMsg")))				return FALSE;
+	if(!((FARPROC)MaSound_EmuInitialize	= GetProcAddress(g_hMaSound, "MaSound_EmuInitialize")))	return FALSE;
+	if(!((FARPROC)MaSound_Initialize	= GetProcAddress(g_hMaSound, "MaSound_Initialize")))		return FALSE;
+	if(!((FARPROC)MaSound_DeviceControl	= GetProcAddress(g_hMaSound, "MaSound_DeviceControl")))	return FALSE;
+	if(!((FARPROC)MaSound_Terminate		= GetProcAddress(g_hMaSound, "MaSound_Terminate")))		return FALSE;
+	if(!((FARPROC)MaSound_Create		= GetProcAddress(g_hMaSound, "MaSound_Create")))			return FALSE;
+	if(!((FARPROC)MaSound_Load			= GetProcAddress(g_hMaSound, "MaSound_Load")))			return FALSE;
+	if(!((FARPROC)MaSound_Control		= GetProcAddress(g_hMaSound, "MaSound_Control")))			return FALSE;
+	if(!((FARPROC)MaSound_Open			= GetProcAddress(g_hMaSound, "MaSound_Open")))			return FALSE;
+	if(!((FARPROC)MaSound_Standby		= GetProcAddress(g_hMaSound, "MaSound_Standby")))			return FALSE;
+	if(!((FARPROC)MaSound_Start			= GetProcAddress(g_hMaSound, "MaSound_Start")))			return FALSE;
+	if(!((FARPROC)MaSound_GetEmuInfo	= GetProcAddress(g_hMaSound, "MaSound_GetEmuInfo")))		return FALSE;
+	if(!((FARPROC)MaSound_Stop			= GetProcAddress(g_hMaSound, "MaSound_Stop")))			return FALSE;
+	if(!((FARPROC)MaSound_Seek			= GetProcAddress(g_hMaSound, "MaSound_Seek")))			return FALSE;
+	if(!((FARPROC)MaSound_Close			= GetProcAddress(g_hMaSound, "MaSound_Close")))			return FALSE;
+	if(!((FARPROC)MaSound_Unload		= GetProcAddress(g_hMaSound, "MaSound_Unload")))			return FALSE;
+	if(!((FARPROC)MaSound_Delete		= GetProcAddress(g_hMaSound, "MaSound_Delete")))			return FALSE;
+	if(!((FARPROC)MaSound_Terminate		= GetProcAddress(g_hMaSound, "MaSound_Terminate")))		return FALSE;
+	if(!((FARPROC)MaSound_EmuTerminate	= GetProcAddress(g_hMaSound, "MaSound_EmuTerminate")))	return FALSE;
+	if(!((FARPROC)SetMidiMsg			= GetProcAddress(g_hMaSound, "SetMidiMsg")))				return FALSE;
 
     
     return 1;

@@ -122,9 +122,8 @@ JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_initPlayer(JNIEnv *env, jcl
     if (!MaSound_Load) return;
     
     // Получаем ID из byte array (4 байта)
-    jbyte buf[4];
-    (*env)->GetByteArrayRegion(env, arr, 0, 4, buf);
-    int id = (buf[0] & 0xFF) | ((buf[1] & 0xFF) << 8) | ((buf[2] & 0xFF) << 16) | ((buf[3] & 0xFF) << 24);
+    jint len = (*env)->GetArrayLength(arr);
+    jbyte* data = (*env)->GetByteArrayElements(arr, NULL)
     
     // Закрываем предыдущий звук если был
     if (g_currentSound != -1) {
@@ -133,7 +132,7 @@ JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_initPlayer(JNIEnv *env, jcl
     }
     
     // Загружаем новый звук
-    int result = MaSound_Load(g_instanceId, id, 0, 1, 0, 0);
+    int result = MaSound_Load(g_instanceId, data, len, 1, 0, 0);
     if (result < 0) return;
     
     g_currentSound = result;

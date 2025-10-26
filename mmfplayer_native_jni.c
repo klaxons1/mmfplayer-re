@@ -52,7 +52,7 @@ static int load_exports() {
 	if(!((FARPROC)MaSound_GetEmuInfo	= GetProcAddress(g_hMaSound, "MaSound_GetEmuInfo")))		return FALSE;
 	if(!((FARPROC)MaSound_Stop			= GetProcAddress(g_hMaSound, "MaSound_Stop")))			return FALSE;
 	if(!((FARPROC)MaSound_Pause			= GetProcAddress(g_hMaSound, "MaSound_Pause")))			return FALSE;
-	if(!((FARPROC)MaSound_Restart			= GetProcAddress(g_hMaSound, "MaSound_Restart")))			return FALSE;
+	if(!((FARPROC)MaSound_Restart		= GetProcAddress(g_hMaSound, "MaSound_Restart")))			return FALSE;
 	if(!((FARPROC)MaSound_Seek			= GetProcAddress(g_hMaSound, "MaSound_Seek")))			return FALSE;
 	if(!((FARPROC)MaSound_Close			= GetProcAddress(g_hMaSound, "MaSound_Close")))			return FALSE;
 	if(!((FARPROC)MaSound_Unload		= GetProcAddress(g_hMaSound, "MaSound_Unload")))			return FALSE;
@@ -121,7 +121,6 @@ JNIEXPORT jint JNICALL Java_emulator_media_MMFPlayer_initMMFLibrary(JNIEnv *env,
 JNIEXPORT jint JNICALL Java_emulator_media_MMFPlayer_initPlayer(JNIEnv *env, jclass cls, jbyteArray arr) {
     if (!MaSound_Load) return -1;
     
-    // Получаем ID из byte array (4 байта)
     jint len = (*env)->GetArrayLength(env, arr);
     jbyte* data = (*env)->GetByteArrayElements(env, arr, NULL);
     
@@ -133,7 +132,7 @@ JNIEXPORT jint JNICALL Java_emulator_media_MMFPlayer_initPlayer(JNIEnv *env, jcl
     
     // Загружаем новый звук
     int result = MaSound_Load(g_instanceId, data, len, 1, 0, 0);
-    if (result < 0) return -2;
+    if (result < 1) return result;
     
     g_currentSound = result;
     
@@ -141,21 +140,24 @@ JNIEXPORT jint JNICALL Java_emulator_media_MMFPlayer_initPlayer(JNIEnv *env, jcl
     if (MaSound_Open(g_instanceId, g_currentSound, 0, 0)) return -3;
     if (MaSound_Standby(g_instanceId, g_currentSound, 0)) return -4;
     //if (MaSound_Control) MaSound_Control(g_instanceId, g_currentSound, 5, 0, 0);
+	int volume = 127;
+	MaSound_Control(g_instanceId, g_currentSound, 0, &volume, 0);
 	int pitch = 0;
 	MaSound_Control(g_instanceId, g_currentSound, 2, &pitch, 0);
 	int tempo = 100;
 	MaSound_Control(g_instanceId, g_currentSound, 1, &tempo, 0);
-	MaSound_Seek(g_instanceId, g_currentSound, 0, 0, 0);
+	if (MaSound_Seek(g_instanceId, g_currentSound, 0, 0, 0)) return -5;
 	
-	return 0;
+	return 1;
 }
 
 JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_play(JNIEnv *env, jclass cls, jint loops, jint vol) {
     if (g_currentSound == -1) return;
     
     // Устанавливаем громкость (0-255 -> 0-100 scale)
-    int volume = (int)((vol & 0xFF) * 100 / 255);
-    if (MaSound_Control) MaSound_Control(g_instanceId, g_currentSound, 0, &volume, 0);
+    //int volume = (int)((vol & 0xFF) * 120 / 5);
+	//int volume = 70;
+    //if (MaSound_Control) MaSound_Control(g_instanceId, g_currentSound, 0, &volume, 0);
     
     // Воспроизводим
     if (MaSound_Start) MaSound_Start(g_instanceId, g_currentSound, loops, 0);

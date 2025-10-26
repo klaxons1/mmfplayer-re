@@ -187,8 +187,17 @@ JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_destroy(JNIEnv *env, jclass
     if (g_isPlaying && MaSound_Stop) {
         MaSound_Stop(g_instanceId, g_currentSound, 0);
     }
+	MaSound_Close(g_instanceId, g_currentSound, 0);
+	MaSound_Unload(g_instanceId, g_currentSound, 0);
     
     if (MaSound_Delete) MaSound_Delete(g_instanceId);
+	
+	MaSound_Terminate();
+	MaSound_EmuTerminate();
+	
+	if (EmuBuf) {
+		free(EmuBuf);
+	}
     
     if (g_hMaSound) {
         FreeLibrary(g_hMaSound);

@@ -145,6 +145,7 @@ JNIEXPORT jint JNICALL Java_emulator_media_MMFPlayer_initPlayer(JNIEnv *env, jcl
 	MaSound_Control(g_instanceId, g_currentSound, 2, &pitch, 0);
 	int tempo = 100;
 	MaSound_Control(g_instanceId, g_currentSound, 1, &tempo, 0);
+	MaSound_Seek(g_instanceId, g_currentSound, 0, 0, 0);
 	
 	return 0;
 }

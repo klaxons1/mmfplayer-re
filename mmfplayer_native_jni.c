@@ -155,9 +155,8 @@ JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_play(JNIEnv *env, jclass cl
     if (g_currentSound == -1) return;
     
     // Устанавливаем громкость (0-255 -> 0-100 scale)
-    //int volume = (int)((vol & 0xFF) * 120 / 5);
-	//int volume = 70;
-    //if (MaSound_Control) MaSound_Control(g_instanceId, g_currentSound, 0, &volume, 0);
+    int volume = (int)((vol & 0xFF) * 100 / 5);
+    if (MaSound_Control) MaSound_Control(g_instanceId, g_currentSound, 0, &volume, 0);
     
     // Воспроизводим
     if (MaSound_Start) MaSound_Start(g_instanceId, g_currentSound, loops, 0);

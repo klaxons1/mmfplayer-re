@@ -10,7 +10,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        compiler: [msvc, mingw]
+        compiler: [msvc]
     
     steps:
       - uses: actions/checkout@v4
@@ -20,14 +20,6 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '8'
-
-      - name: Setup MSYS2 MinGW (for mingw build)
-        if: matrix.compiler == 'mingw'
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW32
-          update: true
-          install: mingw-w64-i686-toolchain
 
       - name: Build with MSVC
         if: matrix.compiler == 'msvc'
@@ -41,7 +33,7 @@ jobs:
              /I"%JAVA_HOME%\include\win32" ^
              mmfplayer_native_jni.c ^
              /Femmfplayer_native_msvc.dll ^
-             /link /DLL /NOLOGO /OUT:mmfplayer_native_msvc.dll
+             /link /DLL /NOLOGO /OUT:mmfplayer.dll
           
           if %errorlevel% neq 0 (
             echo "MSVC compilation failed"
@@ -49,39 +41,10 @@ jobs:
           )
           echo "MSVC build successful"
 
-      - name: Build with MinGW
-        if: matrix.compiler == 'mingw'
-        shell: msys2 {0}
-        run: |
-          echo "Building with MinGW..."
-          # Convert Windows path to MSYS2 path
-          JAVA_HOME_WIN=$(echo "$JAVA_HOME" | sed 's/\\/\//g' | sed 's/C:/\/c/')
-          echo "Java Home: $JAVA_HOME_WIN"
-          
-          i686-w64-mingw32-gcc -m32 -shared -o mmfplayer_native_mingw.dll mmfplayer_native_jni.c \
-            -I"$JAVA_HOME_WIN/include" \
-            -I"$JAVA_HOME_WIN/include/win32" \
-            -Wl,--add-stdcall-alias -static-libgcc -static-libstdc++
-          
-          if [ $? -eq 0 ]; then
-            echo "MinGW build successful"
-          else
-            echo "MinGW compilation failed"
-            exit 1
-          fi
-
       - name: Upload MSVC Artifact
         if: matrix.compiler == 'msvc'
         uses: actions/upload-artifact@v4
         with:
           name: mmfplayer-native-msvc
-          path: mmfplayer_native_msvc.dll
-          retention-days: 30
-
-      - name: Upload MinGW Artifact
-        if: matrix.compiler == 'mingw'
-        uses: actions/upload-artifact@v4
-        with:
-          name: mmfplayer-native-mingw
-          path: mmfplayer_native_mingw.dll
+          path: mmfplayer.dll
           retention-days: 30

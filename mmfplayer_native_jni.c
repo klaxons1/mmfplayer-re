@@ -1,223 +1,143 @@
-
-// mmfplayer_native_jni.c
-// JNI wrapper for emulator.media.MMFPlayer using ma3smwemu.dll (Java 8 compatible)
 #include <windows.h>
 #include <jni.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
 
-#define EXPORT __declspec(dllexport)
+// Глобальные переменные для хранения состояния и функций библиотеки
+HMODULE hModule = NULL;
+int g_playerId = -1;
+int g_isPlaying = 0;
 
-static HMODULE g_hMaSound = NULL;
-static BYTE* EmuBuf;
-static BYTE* EmuP;
-static int g_instanceId = 1;
-static int g_currentSound = -1;
-static int g_isPlaying = 0;
+// Указатели на функции из звуковой библиотеки
+typedef int (__cdecl *MaSound_Initialize_t)();
+typedef int (__cdecl *MaSound_Create_t)(int);
+typedef int (__cdecl *MaSound_Load_t)(int, int, const char*, int, int, int);
+typedef int (__cdecl *MaSound_Open_t)(int, int, int, int);
+typedef int (__cdecl *MaSound_Standby_t)(int, int, int);
+typedef int (__cdecl *MaSound_Start_t)(int, int, int, int);
+typedef int (__cdecl *MaSound_Stop_t)(int, int, int);
+typedef int (__cdecl *MaSound_Pause_t)(int, int, int);
+typedef int (__cdecl *MaSound_Resume_t)(int, int, int);
+typedef int (__cdecl *MaSound_Close_t)(int, int, int);
+typedef int (__cdecl *MaSound_Unload_t)(int, int, int);
+typedef int (__cdecl *MaSound_Delete_t)(int);
 
-static int (*MaSound_EmuInitialize)(DWORD, DWORD, BYTE*);
-static int (*MaSound_Initialize)(int, BYTE*, int);
-static int (*MaSound_DeviceControl)(int, int, int, int);
-static int (*MaSound_Terminate)();
-static int (*MaSound_Create)(int);
-static int (*MaSound_Load)(int, BYTE*, DWORD, int, int, int);
-static int (*MaSound_Control)(int, int, int, int*, int);
-static int (*MaSound_Open)(int, int, int, int);
-static int (*MaSound_Standby)(int, int, int);
-static int (*MaSound_Start)(int, int, int, int);
-static int (*MaSound_GetEmuInfo)(int);
-static int (*MaSound_Stop)(int, int, int);
-static int (*MaSound_Pause)(int, int, int);
-static int (*MaSound_Restart)(int, int, int);
-static int (*MaSound_Seek)(int, int, int, int, int);
-static int (*MaSound_Close)(int, int, int);
-static int (*MaSound_Unload)(int, int, int);
-static int (*MaSound_Delete)(int);
-static int (*MaSound_Terminate)();
-static int (*MaSound_EmuTerminate)();
-static int (*SetMidiMsg)(BYTE*, DWORD);
+MaSound_Initialize_t MaSound_Initialize = NULL;
+MaSound_Create_t MaSound_Create = NULL;
+MaSound_Load_t MaSound_Load = NULL;
+MaSound_Open_t MaSound_Open = NULL;
+MaSound_Standby_t MaSound_Standby = NULL;
+MaSound_Start_t MaSound_Start = NULL;
+MaSound_Stop_t MaSound_Stop = NULL;
+MaSound_Pause_t MaSound_Pause = NULL;
+MaSound_Resume_t MaSound_Resume = NULL;
+MaSound_Close_t MaSound_Close = NULL;
+MaSound_Unload_t MaSound_Unload = NULL;
+MaSound_Delete_t MaSound_Delete = NULL;
 
-static int load_exports() {
-	if(!((FARPROC)MaSound_EmuInitialize	= GetProcAddress(g_hMaSound, "MaSound_EmuInitialize")))	return FALSE;
-	if(!((FARPROC)MaSound_Initialize	= GetProcAddress(g_hMaSound, "MaSound_Initialize")))		return FALSE;
-	if(!((FARPROC)MaSound_DeviceControl	= GetProcAddress(g_hMaSound, "MaSound_DeviceControl")))	return FALSE;
-	if(!((FARPROC)MaSound_Terminate		= GetProcAddress(g_hMaSound, "MaSound_Terminate")))		return FALSE;
-	if(!((FARPROC)MaSound_Create		= GetProcAddress(g_hMaSound, "MaSound_Create")))			return FALSE;
-	if(!((FARPROC)MaSound_Load			= GetProcAddress(g_hMaSound, "MaSound_Load")))			return FALSE;
-	if(!((FARPROC)MaSound_Control		= GetProcAddress(g_hMaSound, "MaSound_Control")))			return FALSE;
-	if(!((FARPROC)MaSound_Open			= GetProcAddress(g_hMaSound, "MaSound_Open")))			return FALSE;
-	if(!((FARPROC)MaSound_Standby		= GetProcAddress(g_hMaSound, "MaSound_Standby")))			return FALSE;
-	if(!((FARPROC)MaSound_Start			= GetProcAddress(g_hMaSound, "MaSound_Start")))			return FALSE;
-	if(!((FARPROC)MaSound_GetEmuInfo	= GetProcAddress(g_hMaSound, "MaSound_GetEmuInfo")))		return FALSE;
-	if(!((FARPROC)MaSound_Stop			= GetProcAddress(g_hMaSound, "MaSound_Stop")))			return FALSE;
-	if(!((FARPROC)MaSound_Pause			= GetProcAddress(g_hMaSound, "MaSound_Pause")))			return FALSE;
-	if(!((FARPROC)MaSound_Restart		= GetProcAddress(g_hMaSound, "MaSound_Restart")))			return FALSE;
-	if(!((FARPROC)MaSound_Seek			= GetProcAddress(g_hMaSound, "MaSound_Seek")))			return FALSE;
-	if(!((FARPROC)MaSound_Close			= GetProcAddress(g_hMaSound, "MaSound_Close")))			return FALSE;
-	if(!((FARPROC)MaSound_Unload		= GetProcAddress(g_hMaSound, "MaSound_Unload")))			return FALSE;
-	if(!((FARPROC)MaSound_Delete		= GetProcAddress(g_hMaSound, "MaSound_Delete")))			return FALSE;
-	if(!((FARPROC)MaSound_Terminate		= GetProcAddress(g_hMaSound, "MaSound_Terminate")))		return FALSE;
-	if(!((FARPROC)MaSound_EmuTerminate	= GetProcAddress(g_hMaSound, "MaSound_EmuTerminate")))	return FALSE;
-	if(!((FARPROC)SetMidiMsg			= GetProcAddress(g_hMaSound, "SetMidiMsg")))				return FALSE;
+// Инициализация библиотеки
+JNIEXPORT jint JNICALL Java_emulator_media_MMFPlayer_initMMFLibrary
+  (JNIEnv *env, jobject obj, jstring libPath) {
 
-    
+    const char* nativeLibPath = (*env)->GetStringUTFChars(env, libPath, 0);
+    hModule = LoadLibraryA(nativeLibPath);
+    (*env)->ReleaseStringUTFChars(env, libPath, nativeLibPath);
+
+    if (!hModule) return -1;
+
+    // Загрузка функций из библиотеки
+    MaSound_Initialize = (MaSound_Initialize_t)GetProcAddress(hModule, "MaSound_Initialize");
+    MaSound_Create = (MaSound_Create_t)GetProcAddress(hModule, "MaSound_Create");
+    MaSound_Load = (MaSound_Load_t)GetProcAddress(hModule, "MaSound_Load");
+    MaSound_Open = (MaSound_Open_t)GetProcAddress(hModule, "MaSound_Open");
+    MaSound_Standby = (MaSound_Standby_t)GetProcAddress(hModule, "MaSound_Standby");
+    MaSound_Start = (MaSound_Start_t)GetProcAddress(hModule, "MaSound_Start");
+    MaSound_Stop = (MaSound_Stop_t)GetProcAddress(hModule, "MaSound_Stop");
+    MaSound_Pause = (MaSound_Pause_t)GetProcAddress(hModule, "MaSound_Pause");
+    MaSound_Resume = (MaSound_Resume_t)GetProcAddress(hModule, "MaSound_Restart");
+    MaSound_Close = (MaSound_Close_t)GetProcAddress(hModule, "MaSound_Close");
+    MaSound_Unload = (MaSound_Unload_t)GetProcAddress(hModule, "MaSound_Unload");
+    MaSound_Delete = (MaSound_Delete_t)GetProcAddress(hModule, "MaSound_Delete");
+
+    if (!MaSound_Initialize || !MaSound_Create) return -1;
+
+    int result = MaSound_Initialize();
+    if (result < 0) return -1;
+
+    result = MaSound_Create(1);
+    return (result >= 0) ? 1 : -1;
+}
+
+// Инициализация плеера
+JNIEXPORT jint JNICALL Java_emulator_media_MMFPlayer_initPlayer
+  (JNIEnv *env, jobject obj, jstring filePath) {
+
+    if (g_playerId != -1) {
+        MaSound_Close(1, g_playerId, 0);
+        MaSound_Unload(1, g_playerId, 0);
+    }
+
+    const char* nativeFilePath = (*env)->GetStringUTFChars(env, filePath, 0);
+    int result = MaSound_Load(1, 0, nativeFilePath, 1, 0, 0);
+    (*env)->ReleaseStringUTFChars(env, filePath, nativeFilePath);
+
+    if (result < 0) return -1;
+
+    g_playerId = result;
+    MaSound_Open(1, g_playerId, 0, 0);
+    MaSound_Standby(1, g_playerId, 0);
     return 1;
 }
 
-JNIEXPORT jint JNICALL Java_emulator_media_MMFPlayer_initMMFLibrary(JNIEnv *env, jclass cls, jstring jpath) {
-    const char *path = (*env)->GetStringUTFChars(env, jpath, NULL);
-    if (!path) return -1;
-    
-    // Загружаем DLL по указанному пути
-    g_hMaSound = LoadLibraryA(path);
-    (*env)->ReleaseStringUTFChars(env, jpath, path);
-    
-    if (!g_hMaSound) return -2;
-    
-    if (!load_exports()) return -3;
-	
-	if (EmuBuf) {
-		free(EmuBuf);
-	}
-	
-	EmuBuf = malloc(1024);
-	EmuP = EmuBuf;
-	while(((DWORD)EmuP & 0xFF) != 0x81) EmuP++;
-    
-    int result = 0;
-    if (!MaSound_Initialize) {
-		return -5;
-	}
-	if(MaSound_EmuInitialize(48000, 2, EmuP)) {
-		return -6;
-	}
-	if(MaSound_Initialize(0, EmuBuf, 0))	{
-		return -7;
-	}
-	if(MaSound_DeviceControl(0x0D, 0, 0, 0)) {
-		return -8;
-	}
-	if(MaSound_DeviceControl(0x05, 2, 0, 0)) {
-		return 0;
-	}
-	if(MaSound_DeviceControl(0x06, 0, 0, 0)) {
-		return 0;
-	}
-	if(MaSound_DeviceControl(0x08, 2, 0, 0)) {
-		return 0;
-	}
-	if(MaSound_DeviceControl(0x09, 0, 0, 0)) {
-		return 0;
-	}
-    
-    if (MaSound_Create) {
-        result = MaSound_Create(g_instanceId);
-    }
-    
-    return result;
-}
+// Воспроизведение звука
+JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_play
+  (JNIEnv *env, jobject obj, jint loops, jboolean background) {
 
-JNIEXPORT jint JNICALL Java_emulator_media_MMFPlayer_initPlayer(JNIEnv *env, jclass cls, jbyteArray arr) {
-    if (!MaSound_Load) return -1;
-    
-    jint len = (*env)->GetArrayLength(env, arr);
-    jbyte* data = (*env)->GetByteArrayElements(env, arr, NULL);
-    
-    // Закрываем предыдущий звук если был
-    if (g_currentSound != -1) {
-        if (MaSound_Close) MaSound_Close(g_instanceId, g_currentSound, 0);
-        if (MaSound_Unload) MaSound_Unload(g_instanceId, g_currentSound, 0);
-    }
-    
-    // Загружаем новый звук
-    int result = MaSound_Load(g_instanceId, data, len, 1, 0, 0);
-    if (result < 1) return result;
-    
-    g_currentSound = result;
-    
-    // Дополнительные операции как в оригинале
-    if (MaSound_Open(g_instanceId, g_currentSound, 0, 0)) return -3;
-    if (MaSound_Standby(g_instanceId, g_currentSound, 0)) return -4;
-    //if (MaSound_Control) MaSound_Control(g_instanceId, g_currentSound, 5, 0, 0);
-	int volume = 127;
-	MaSound_Control(g_instanceId, g_currentSound, 0, &volume, 0);
-	int pitch = 0;
-	MaSound_Control(g_instanceId, g_currentSound, 2, &pitch, 0);
-	int tempo = 100;
-	MaSound_Control(g_instanceId, g_currentSound, 1, &tempo, 0);
-	if (MaSound_Seek(g_instanceId, g_currentSound, 0, 0, 0)) return -5;
-	
-	return 1;
-}
+    if (g_isPlaying) Java_emulator_media_MMFPlayer_stop(env, obj);
 
-JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_play(JNIEnv *env, jclass cls, jint loops, jint vol) {
-    if (g_currentSound == -1) return;
-    
-    // Устанавливаем громкость (0-255 -> 0-100 scale)
-    int volume = (int)((vol & 0xFF) * 100 / 5);
-    if (MaSound_Control) MaSound_Control(g_instanceId, g_currentSound, 0, &volume, 0);
-    
-    // Воспроизводим
-    if (MaSound_Start) MaSound_Start(g_instanceId, g_currentSound, loops, 0);
+    char volume = 25 * (background ? 1 : 0);
+    MaSound_Start(1, g_playerId, loops, 0);
     g_isPlaying = 1;
 }
 
-JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_stop(JNIEnv *env, jclass cls) {
-    if (g_currentSound == -1) return;
-    
-    if (MaSound_Stop) MaSound_Stop(g_instanceId, g_currentSound, 0);
+// Проверка состояния воспроизведения
+JNIEXPORT jboolean JNICALL Java_emulator_media_MMFPlayer_isPlaying
+  (JNIEnv *env, jobject obj) {
+    return g_isPlaying;
+}
+
+// Остановка воспроизведения
+JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_stop
+  (JNIEnv *env, jobject obj) {
+
+    MaSound_Stop(1, g_playerId, 0);
     g_isPlaying = 0;
 }
 
-JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_pause(JNIEnv *env, jclass cls) {
-    if (g_currentSound == -1) return;
-    
-    if (MaSound_Pause) MaSound_Pause(g_instanceId, g_currentSound, 0);
+// Приостановка воспроизведения
+JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_pause
+  (JNIEnv *env, jobject obj) {
+    MaSound_Pause(1, g_playerId, 0);
 }
 
-JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_resume(JNIEnv *env, jclass cls) {
-    if (g_currentSound == -1) return;
-    
-    if (MaSound_Restart) MaSound_Restart(g_instanceId, g_currentSound, 0);
+// Возобновление воспроизведения
+JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_resume
+  (JNIEnv *env, jobject obj) {
+    MaSound_Resume(1, g_playerId, 0);
 }
 
-JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_destroy(JNIEnv *env, jclass cls) {
-    if (g_isPlaying && MaSound_Stop) {
-        MaSound_Stop(g_instanceId, g_currentSound, 0);
+// Освобождение ресурсов
+JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_destroy
+  (JNIEnv *env, jobject obj) {
+
+    if (g_playerId != -1) {
+        MaSound_Close(1, g_playerId, 0);
+        MaSound_Unload(1, g_playerId, 0);
+        MaSound_Delete(1);
+        g_playerId = -1;
     }
-	MaSound_Close(g_instanceId, g_currentSound, 0);
-	MaSound_Unload(g_instanceId, g_currentSound, 0);
-    
-    if (MaSound_Delete) MaSound_Delete(g_instanceId);
-	
-	MaSound_Terminate();
-	MaSound_EmuTerminate();
-	
-	if (EmuBuf) {
-		free(EmuBuf);
-	}
-    
-    if (g_hMaSound) {
-        FreeLibrary(g_hMaSound);
-        g_hMaSound = NULL;
-    }
-    
     g_isPlaying = 0;
-    g_currentSound = -1;
-}
 
-JNIEXPORT jboolean JNICALL Java_emulator_media_MMFPlayer_isPlaying(JNIEnv *env, jclass cls) {
-    return g_isPlaying ? JNI_TRUE : JNI_FALSE;
-}
-
-BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved) {
-    switch (reason) {
-        case DLL_PROCESS_ATTACH:
-        case DLL_THREAD_ATTACH:
-        case DLL_THREAD_DETACH:
-        case DLL_PROCESS_DETACH:
-            break;
+    if (hModule) {
+        FreeLibrary(hModule);
+        hModule = NULL;
     }
-    return TRUE;
 }

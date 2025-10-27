@@ -33,9 +33,23 @@ MaSound_Close_t MaSound_Close = NULL;
 MaSound_Unload_t MaSound_Unload = NULL;
 MaSound_Delete_t MaSound_Delete = NULL;
 
+// Вспомогательная функция для преобразования jbyteArray в const char*
+const char* jbyteArrayToCharArray(JNIEnv *env, jbyteArray byteArray) {
+    jsize length = (*env)->GetArrayLength(env, byteArray);
+    jbyte* bytes = (*env)->GetByteArrayElements(env, byteArray, NULL);
+
+    // Выделяем память и копируем данные
+    char* result = (char*)malloc(length + 1);
+    memcpy(result, bytes, length);
+    result[length] = '\0';
+
+    (*env)->ReleaseByteArrayElements(env, byteArray, bytes, JNI_ABORT);
+    return result;
+}
+
 // Инициализация библиотеки
 JNIEXPORT jint JNICALL Java_emulator_media_MMFPlayer_initMMFLibrary
-  (JNIEnv *env, jobject obj, jstring libPath) {
+  (JNIEnv *env, jclass clazz, jstring libPath) {
 
     const char* nativeLibPath = (*env)->GetStringUTFChars(env, libPath, 0);
     hModule = LoadLibraryA(nativeLibPath);
@@ -66,72 +80,83 @@ JNIEXPORT jint JNICALL Java_emulator_media_MMFPlayer_initMMFLibrary
     return (result >= 0) ? 1 : -1;
 }
 
-// Инициализация плеера
-JNIEXPORT jint JNICALL Java_emulator_media_MMFPlayer_initPlayer
-  (JNIEnv *env, jobject obj, jstring filePath) {
+// Инициализация плеера с данными из byte array
+JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_initPlayer
+  (JNIEnv *env, jclass clazz, jbyteArray data) {
 
     if (g_playerId != -1) {
-        MaSound_Close(1, g_playerId, 0);
-        MaSound_Unload(1, g_playerId, 0);
+        if (MaSound_Close) MaSound_Close(1, g_playerId, 0);
+        if (MaSound_Unload) MaSound_Unload(1, g_playerId, 0);
     }
 
-    const char* nativeFilePath = (*env)->GetStringUTFChars(env, filePath, 0);
-    int result = MaSound_Load(1, 0, nativeFilePath, 1, 0, 0);
-    (*env)->ReleaseStringUTFChars(env, filePath, nativeFilePath);
+    // Преобразуем byte array в временный файл или используем напрямую
+    const char* tempData = jbyteArrayToCharArray(env, data);
 
-    if (result < 0) return -1;
+    // Загрузка звуковых данных
+    if (MaSound_Load) {
+        int result = MaSound_Load(1, 0, tempData, 1, 0, 0);
+        if (result >= 0) {
+            g_playerId = result;
+            if (MaSound_Open) MaSound_Open(1, g_playerId, 0, 0);
+            if (MaSound_Standby) MaSound_Standby(1, g_playerId, 0);
+        }
+    }
 
-    g_playerId = result;
-    MaSound_Open(1, g_playerId, 0, 0);
-    MaSound_Standby(1, g_playerId, 0);
-    return 1;
+    free((void*)tempData);
 }
 
 // Воспроизведение звука
 JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_play
-  (JNIEnv *env, jobject obj, jint loops, jboolean background) {
+  (JNIEnv *env, jclass clazz, jint loops, jint background) {
 
-    if (g_isPlaying) Java_emulator_media_MMFPlayer_stop(env, obj);
+    if (g_isPlaying) Java_emulator_media_MMFPlayer_stop(env, clazz);
 
-    char volume = 25 * (background ? 1 : 0);
-    MaSound_Start(1, g_playerId, loops, 0);
-    g_isPlaying = 1;
+    if (MaSound_Start && g_playerId != -1) {
+        MaSound_Start(1, g_playerId, loops, 0);
+        g_isPlaying = 1;
+    }
 }
 
 // Проверка состояния воспроизведения
 JNIEXPORT jboolean JNICALL Java_emulator_media_MMFPlayer_isPlaying
-  (JNIEnv *env, jobject obj) {
-    return g_isPlaying;
+  (JNIEnv *env, jclass clazz) {
+    return (jboolean)g_isPlaying;
 }
 
 // Остановка воспроизведения
 JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_stop
-  (JNIEnv *env, jobject obj) {
+  (JNIEnv *env, jclass clazz) {
 
-    MaSound_Stop(1, g_playerId, 0);
-    g_isPlaying = 0;
+    if (MaSound_Stop && g_playerId != -1) {
+        MaSound_Stop(1, g_playerId, 0);
+        g_isPlaying = 0;
+    }
 }
 
 // Приостановка воспроизведения
 JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_pause
-  (JNIEnv *env, jobject obj) {
-    MaSound_Pause(1, g_playerId, 0);
+  (JNIEnv *env, jclass clazz) {
+    if (MaSound_Pause && g_playerId != -1) {
+        MaSound_Pause(1, g_playerId, 0);
+    }
 }
 
 // Возобновление воспроизведения
 JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_resume
-  (JNIEnv *env, jobject obj) {
-    MaSound_Resume(1, g_playerId, 0);
+  (JNIEnv *env, jclass clazz) {
+    if (MaSound_Resume && g_playerId != -1) {
+        MaSound_Resume(1, g_playerId, 0);
+    }
 }
 
 // Освобождение ресурсов
 JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_destroy
-  (JNIEnv *env, jobject obj) {
+  (JNIEnv *env, jclass clazz) {
 
     if (g_playerId != -1) {
-        MaSound_Close(1, g_playerId, 0);
-        MaSound_Unload(1, g_playerId, 0);
-        MaSound_Delete(1);
+        if (MaSound_Close) MaSound_Close(1, g_playerId, 0);
+        if (MaSound_Unload) MaSound_Unload(1, g_playerId, 0);
+        if (MaSound_Delete) MaSound_Delete(1);
         g_playerId = -1;
     }
     g_isPlaying = 0;

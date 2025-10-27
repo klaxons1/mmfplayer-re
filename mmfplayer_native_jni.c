@@ -47,6 +47,16 @@ const char* jbyteArrayToCharArray(JNIEnv *env, jbyteArray byteArray) {
     return result;
 }
 
+// Объявления функций для избежания конфликтов
+JNIEXPORT jint JNICALL Java_emulator_media_MMFPlayer_initMMFLibrary(JNIEnv *, jclass, jstring);
+JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_initPlayer(JNIEnv *, jclass, jbyteArray);
+JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_play(JNIEnv *, jclass, jint, jint);
+JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_destroy(JNIEnv *, jclass);
+JNIEXPORT jboolean JNICALL Java_emulator_media_MMFPlayer_isPlaying(JNIEnv *, jclass);
+JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_stop(JNIEnv *, jclass);
+JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_pause(JNIEnv *, jclass);
+JNIEXPORT void JNICALL Java_emulator_media_MMFPlayer_resume(JNIEnv *, jclass);
+
 // Инициализация библиотеки
 JNIEXPORT jint JNICALL Java_emulator_media_MMFPlayer_initMMFLibrary
   (JNIEnv *env, jclass clazz, jstring libPath) {
